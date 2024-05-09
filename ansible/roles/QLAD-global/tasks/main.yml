@@ -35,6 +35,11 @@
     group: qlad 
     recurse: yes
 
+- name: pre - Install Cython package for thriftpy2
+    pip:
+      name: cython
+      state: present
+
 - name: Install python requirements
   pip:
     requirements: "{{ base_dir }}/QLAD-global/requirements.txt"
