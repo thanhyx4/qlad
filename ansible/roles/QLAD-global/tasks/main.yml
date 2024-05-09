@@ -36,9 +36,9 @@
     recurse: yes
 
 - name: pre - Install Cython package for thriftpy2
-    pip:
-      name: cython
-      state: present
+  pip:
+    name: Cython
+    state: present
 
 - name: Install python requirements
   pip:
