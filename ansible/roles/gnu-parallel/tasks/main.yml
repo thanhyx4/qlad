@@ -56,29 +56,29 @@
   command: ./configure
   args:
     chdir: "{{ gnu_parallel_build_path }}/{{ _version_check.stdout }}"
-  when: _unarchive | changed
+  when: _unarchive.changed
 
 - name: Make
   command: make -j{{ ansible_processor_cores + 1 }}
   args:
     chdir: "{{ gnu_parallel_build_path }}/{{ _version_check.stdout }}"
-  when: _unarchive | changed
+  when: _unarchive.changed
 
 - name: Make install
   command: make install
   args:
     chdir: "{{ gnu_parallel_build_path }}/{{ _version_check.stdout }}"
-  when: _unarchive | changed
+  when: _unarchive.changed
   become: true
 
 - name: Create .parallel directory
   file: 
     path: "{{ ansible_env.HOME }}/.parallel"
     state: directory
-  when: _unarchive | changed
+  when: _unarchive.changed
 
 - name: Silence citation notice
   copy:
     content: ""
     dest: "{{ ansible_env.HOME }}/.parallel/will-cite"
-  when: _unarchive | changed
+  when: _unarchive.changed
