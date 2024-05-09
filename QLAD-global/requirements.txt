@@ -1,4 +1,4 @@
-bitarray==1.9.5
+bitarray==2.9.2
 impyla==0.16.2
 numpy==1.19.5
 pymongo==4.1.1
