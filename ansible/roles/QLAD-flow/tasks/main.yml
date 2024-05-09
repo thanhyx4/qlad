@@ -45,8 +45,19 @@
 - name: Install the 'Development tools' package group
   yum: name="@Development tools" state=present
 
-- name: Install 'libpcap' libraries
-  yum: name=libpcap-devel state=present
+- name: Enable CentOS 8 PowerTools repository
+  become: yes
+  shell: dnf config-manager --set-enabled powertools
+
+- name: Install libpcap-devel
+  become: yes
+  dnf:
+    name: libpcap-devel
+    state: present
+
+- name: Disable CentOS 8 PowerTools repository
+  become: yes
+  shell: dnf config-manager --set-disabled powertools
 
 - name: Install lsof
   yum: name=lsof state=present
