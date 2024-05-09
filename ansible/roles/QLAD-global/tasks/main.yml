@@ -37,8 +37,7 @@
 
 - name: pre - Install Cython package for thriftpy2
   pip:
-    name: Cython
-    state: present
+    name: cython
 
 - name: Install python requirements
   pip:
