@@ -1,6 +1,6 @@
 bitarray==1.9.2
 impyla==0.16.2
-numpy==1.21.0
+numpy==1.19.5
 pymongo==4.1.1
-six==1.16.0
-thrift==0.15.0
+six==1.14.0
+thrift==0.14.0
