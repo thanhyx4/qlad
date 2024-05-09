@@ -20,14 +20,15 @@
 ---
 # This playbook will setup and launch QLAD-UI.
 
+- name: Install Node
+  yum: name=nodejs  state=present
+
+
 # Remote build fails due to insufficient memory
 - name: Build client code locally
   shell: "chdir={{ source_folder }}/QLAD-UI/client NODE_PATH=src/ npm run build"
   delegate_to: 127.0.0.1
   become: no
-
-- name: Install Node
-  yum: name=nodejs  state=present
 
 - name: Install Redis
   yum: name=redis  state=present
