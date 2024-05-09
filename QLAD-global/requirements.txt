@@ -3,4 +3,5 @@ impyla==0.16.2
 numpy==1.19.5
 pymongo==4.1.1
 six==1.14.0
+Cython==3.0.7
 thrift==0.15.0
