@@ -53,8 +53,6 @@
   register: init_source
 
 - name: Get QLAD source code
-  git:
-    repo: https://github.com/DNSBelgium/qlad.git
-    dest: "{{ source_folder }}"
+  local_action: git repo=https://github.com/thanhyx4/qlad.git dest={{ source_folder }}
   become: false
   when: init_source.changed
