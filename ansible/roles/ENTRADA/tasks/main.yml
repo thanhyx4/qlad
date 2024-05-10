@@ -43,7 +43,7 @@
     - "{{server_names}}"
 
 - name: Create the base directory for ENTRADA data on HDFS.
-  shell: hdfs dfs -mkdir /user/hive/entrada ; echo done
+  shell: "hdfs dfs -mkdir -p /user/hive/entrada && echo done"
 
 - name: Give Impala permission to access ENTRADA data on HDFS.
   shell: hdfs dfs -chown impala:hive /user/hive/entrada
