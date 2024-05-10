@@ -49,7 +49,7 @@
 #   shell: hdfs dfs -chown impala:hive /user/hive/entrada
 
 - name: Create the Impala database tables.
-  command: "bash {{entrada_base_dir}}/entrada-latest/scripts/install/create_impala_tables.sh"
+  command: "{{entrada_base_dir}}/entrada-latest/scripts/install/create_impala_tables.sh"
 
 # - name: Make sure permissions are set correctly for these tables.
 #   shell: hdfs dfs -chown -R impala:hive /user/hive/entrada
