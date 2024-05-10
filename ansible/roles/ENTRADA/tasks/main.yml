@@ -42,17 +42,17 @@
     - ["pcap"]
     - "{{server_names}}"
 
-- name: Create the base directory for ENTRADA data on HDFS.
-  shell: "hdfs dfs -mkdir -p /user/hive/entrada && echo done"
+# - name: Create the base directory for ENTRADA data on HDFS.
+#   shell: "hdfs dfs -mkdir -p /user/hive/entrada && echo done"
 
-- name: Give Impala permission to access ENTRADA data on HDFS.
-  shell: hdfs dfs -chown impala:hive /user/hive/entrada
+# - name: Give Impala permission to access ENTRADA data on HDFS.
+#   shell: hdfs dfs -chown impala:hive /user/hive/entrada
 
 - name: Create the Impala database tables.
   command: "{{entrada_base_dir}}/entrada-latest/scripts/install/create_impala_tables.sh"
 
-- name: Make sure permissions are set correctly for these tables.
-  shell: hdfs dfs -chown -R impala:hive /user/hive/entrada
+# - name: Make sure permissions are set correctly for these tables.
+#   shell: hdfs dfs -chown -R impala:hive /user/hive/entrada
 
 - name: Create a directory for the log files.
   file:
