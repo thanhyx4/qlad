@@ -222,7 +222,7 @@ def to_document(start, end, server, features, histograms, anomalies):
 
 def store_in_mongoDB(documents):
     if len(documents):
-        client = MongoClient(host=[MONGO_HOST])
+        client = MongoClient(host=[MONGO_HOST], username='admin', password='1111')
         db = client[MONGO_DB]
         result = db.dnsstats.insert_many(documents)
         if result:
