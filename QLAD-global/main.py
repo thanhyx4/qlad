@@ -133,7 +133,7 @@ def get_last_ts(server):
 
 
 def fetch_data(features, begin, end, server):
-    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT)
+    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl = True)
     cur = conn.cursor()
     histograms = []
     for feature in features:
