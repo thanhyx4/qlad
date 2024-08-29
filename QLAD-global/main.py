@@ -28,6 +28,7 @@ import json
 import logging
 import sys
 import ema_filter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Databases
 IMPALA_HOST='impalahost'
@@ -101,18 +102,16 @@ def main():
         # Fetch data from impala
         logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
                      .format(options.server, datetime.fromtimestamp(begin), datetime.fromtimestamp(end), datetime.fromtimestamp(last_ts)))
-        histograms = fetch_data(features, begin, end, options.server)
-        entropies = [entropy(histogram) for histogram in histograms]
-        # Detect anomalies in fetched data
-        logger.info("Detecting anomalies for {} between {} and {}."
-                     .format(options.server, datetime.fromtimestamp(begin), datetime.fromtimestamp(end)))
-        anomalies = []
-        for feature, ent in zip(features, entropies):
-            anomaly = detect_anomaly(feature, ent, options.server, options.threshold)
-            if anomaly is not None:
-                anomalies.append({ 'feature': feature, 'score': anomaly })
-        # Create a mongoDB document for the data and anomalies
-        documents.append(to_document(begin, end, options.server, features, histograms, anomalies))
+
+        with ThreadPoolExecutor() as executor:
+            future_to_feature = {executor.submit(process_feature, feature, begin, end, options.server, options.threshold): feature for feature in features}
+
+            #sync max time in hdfs between servers ?
+
+        
+
+
+        
         # Go to the next window
         begin = end
         end = begin + options.window
@@ -122,10 +121,46 @@ def main():
     print("Start next execution with --begin {}".format(begin))
 
 
-def get_last_ts(server):
-    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT)
+def process_feature(feature, begin, end, server, threshold):
+    histogram = fetch_data([feature], begin, end, server)
+    ent = entropy(histogram)
+    anomaly = detect_anomaly(feature, ent, options.server, options.threshold)
+    if anomaly is not None:
+        return to_document(begin, end, server, [feature], histograms, [{'feature': feature, 'score': anomaly}])
+    return to_document(begin, end, server, [feature], histograms, [])
+def fetch_data(feature, begin, end, server):
+    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
-    cur.execute("SELECT MAX(unixtime) "
+    sql = "SELECT {0}, count({0}) AS cnt FROM dns.staging WHERE time >= {1} AND time < {2} AND server = '{3}' GROUP BY {0}".format(feature, begin, end, server)
+    logger.debug("Executing sql: " + sql)
+    cur.execute(sql)
+    logger.debug("Get description of results returned by impala query for feature:" + str(feature) + str(cur.description))
+    output = cur.fetchall()
+    logger.debug("length of output of impala query for " + feature + ":" + str(len(output)))
+    conn.close()
+    return output
+
+def entropy(histogram):
+    """ Computes the normalized entropy of a histogram. """
+    total = sum([bin[1] for bin in histogram])
+    if total == 0:
+        return 0.0
+
+    entropy = 0.0
+    for bin in histogram:
+        if bin[1] > 0:
+            entropy -= (bin[1]/total) * log10(bin[1]/total)
+
+    # clip small negative values
+    if entropy < 0:
+        return 0.0
+    return entropy / log10(len(histogram))
+
+
+def get_last_ts(server):
+    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
+    cur = conn.cursor()
+    cur.execute("SELECT MAX(time) "
                 "FROM dns.staging "
                 "WHERE server = '{0}'".format(server))
     logger.debug("Get last ts from impala with" + str(cur.description))
