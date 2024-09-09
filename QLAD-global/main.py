@@ -29,6 +29,8 @@ import logging
 import sys
 import ema_filter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import pandas as pd
+
 
 # Databases
 IMPALA_HOST='impalahost'
@@ -102,11 +104,13 @@ def main():
         # Fetch data from impala
         logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
                      .format(options.server, datetime.fromtimestamp(begin), datetime.fromtimestamp(end), datetime.fromtimestamp(last_ts)))
+        
+        histograms = pd.DataFrame(fetch_all_data(features, begin, end, options.server))
+        
+        # with ThreadPoolExecutor() as executor:
+        #     future_to_feature = {executor.submit(process_feature, feature, begin, end, options.server, options.threshold): feature for feature in features}
 
-        with ThreadPoolExecutor() as executor:
-            future_to_feature = {executor.submit(process_feature, feature, begin, end, options.server, options.threshold): feature for feature in features}
-
-            #sync max time in hdfs between servers ?
+        #     #sync max time in hdfs between servers ?
 
         
 
@@ -128,6 +132,21 @@ def process_feature(feature, begin, end, server, threshold):
     if anomaly is not None:
         return to_document(begin, end, server, [feature], histograms, [{'feature': feature, 'score': anomaly}])
     return to_document(begin, end, server, [feature], histograms, [])
+
+
+def fetch_all_data(features, begin, end, server):
+    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
+    cur = conn.cursor()
+    feature_list = ", ".join(features)
+    sql = "SELECT time, {feature_list} FROM dns.staging WHERE time >= {begin} AND time < {end} AND server = '{server}'"
+    logger.debug("Executing sql: " + sql)
+    cur.execute(sql)
+    logger.debug("Get description of results returned by impala query for feature:" + str(feature) + str(cur.description))
+    output = cur.fetchall()
+    logger.debug("length of output of impala query for " + feature + ":" + str(len(output)))
+    conn.close()
+    return output
+
 def fetch_data(feature, begin, end, server):
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
@@ -156,6 +175,21 @@ def entropy(histogram):
         return 0.0
     return entropy / log10(len(histogram))
 
+def entropy_df(histogram):
+    """ Computes the normalized entropy of a histogram. """
+    total = sum([bin for bin in histogram])
+    if total == 0:
+        return 0.0
+
+    entropy = 0.0
+    for bin in histogram:
+        if bin > 0:
+            entropy -= (bin/total)*log10(bin/total)
+
+    # clip small negative values
+    if entropy < 0:
+        return 0.0
+    return entropy / log10(len(histogram))
 
 def get_last_ts(server):
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
