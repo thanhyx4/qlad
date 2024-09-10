@@ -133,7 +133,7 @@ def main():
 def process_feature(feature, begin, end, server, threshold, begin_dt, end_dt):
     histogram = fetch_data(feature, begin, end, server, begin_dt, end_dt)
     ent = entropy(histogram)
-    anomaly = detect_anomaly(feature, ent, options.server, options.threshold)
+    anomaly = detect_anomaly(feature, ent, server, threshold)
     #store to graphite
 
 
