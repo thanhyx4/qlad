@@ -97,25 +97,30 @@ def main():
     #features = ['rcode']
     documents = []
 
-    last_ts = get_last_ts(options.server)
+    
     begin = options.begin
     end = begin + options.window
+    last_ts = get_last_ts(options.server, end/1000)
+    last_dt = datetime.fromtimestamp(last_ts/1000)
+    
     while end < last_ts:
         # Fetch data from impala
+        begin_dt = datetime.fromtimestamp(begin/1000)
+        end_dt = datetime.fromtimestamp(end/1000)
         logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
-                     .format(options.server, datetime.fromtimestamp(begin), datetime.fromtimestamp(end), datetime.fromtimestamp(last_ts)))
-        
-        histograms = pd.DataFrame(fetch_all_data(features, begin, end, options.server))
-        
-        # with ThreadPoolExecutor() as executor:
-        #     future_to_feature = {executor.submit(process_feature, feature, begin, end, options.server, options.threshold): feature for feature in features}
+                     .format(options.server,begin_dt, end_dt, last_dt))
 
-        #     #sync max time in hdfs between servers ?
-
-        
-
-
-        
+        with ThreadPoolExecutor() as executor:
+            future_to_feature = {executor.submit(process_feature, feature, begin, end, options.server, options.threshold, begin_dt, end_dt): feature for feature in features}
+            
+            for future in as_completed(future_to_feature):
+                feature = future_to_feature[future]
+                try:
+                    result = future.result()
+                    # Process the result if necessary
+                except Exception as exc:
+                    print(f'{feature} generated an exception: {exc}') 
+ 
         # Go to the next window
         begin = end
         end = begin + options.window
@@ -125,32 +130,17 @@ def main():
     print("Start next execution with --begin {}".format(begin))
 
 
-def process_feature(feature, begin, end, server, threshold):
-    histogram = fetch_data([feature], begin, end, server)
+def process_feature(feature, begin, end, server, threshold, begin_dt, end_dt):
+    histogram = fetch_data(feature, begin, end, server, begin_dt, end_dt)
     ent = entropy(histogram)
     anomaly = detect_anomaly(feature, ent, options.server, options.threshold)
-    if anomaly is not None:
-        return to_document(begin, end, server, [feature], histograms, [{'feature': feature, 'score': anomaly}])
-    return to_document(begin, end, server, [feature], histograms, [])
+    #store to graphite
 
 
-def fetch_all_data(features, begin, end, server):
+def fetch_data(feature, begin, end, server, begin_dt, end_dt):
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
-    feature_list = ", ".join(features)
-    sql = "SELECT time, {feature_list} FROM dns.staging WHERE time >= {begin} AND time < {end} AND server = '{server}'"
-    logger.debug("Executing sql: " + sql)
-    cur.execute(sql)
-    logger.debug("Get description of results returned by impala query for feature:" + str(feature) + str(cur.description))
-    output = cur.fetchall()
-    logger.debug("length of output of impala query for " + feature + ":" + str(len(output)))
-    conn.close()
-    return output
-
-def fetch_data(feature, begin, end, server):
-    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
-    cur = conn.cursor()
-    sql = "SELECT {0}, count({0}) AS cnt FROM dns.staging WHERE time >= {1} AND time < {2} AND server = '{3}' GROUP BY {0}".format(feature, begin, end, server)
+    sql = "SELECT {0}, count({0}) AS cnt FROM entrada.dns WHERE ((year = {1}.year AND month = {1}.month AND day = {1}.day) OR (year = {2}.year AND month = {2}.month AND day = {2}.day)) AND server = '{3}' AND time >= {4} AND time < {5} GROUP BY {0}".format(feature, begin_dt, end_dt, server, begin, end)
     logger.debug("Executing sql: " + sql)
     cur.execute(sql)
     logger.debug("Get description of results returned by impala query for feature:" + str(feature) + str(cur.description))
@@ -175,30 +165,19 @@ def entropy(histogram):
         return 0.0
     return entropy / log10(len(histogram))
 
-def entropy_df(histogram):
-    """ Computes the normalized entropy of a histogram. """
-    total = sum([bin for bin in histogram])
-    if total == 0:
-        return 0.0
 
-    entropy = 0.0
-    for bin in histogram:
-        if bin > 0:
-            entropy -= (bin/total)*log10(bin/total)
 
-    # clip small negative values
-    if entropy < 0:
-        return 0.0
-    return entropy / log10(len(histogram))
-
-def get_last_ts(server):
+def get_last_ts(server, end):
+    dt = datetime.fromtimestamp(end)
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
     cur.execute("SELECT MAX(time) "
                 "FROM dns.staging "
-                "WHERE server = '{0}'".format(server))
+                "WHERE server = '{0}' and year = {1} and month = {2} and day = {3} ".format(server, dt.year, dt.month, dt.day))
     logger.debug("Get last ts from impala with" + str(cur.description))
     return cur.fetchall()[0][0]
+
+
 
 
 def fetch_data(features, begin, end, server):
