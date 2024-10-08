@@ -81,7 +81,7 @@ count=0
 #Sort oldest first
 
 ###CHANGE to COPY all to local from input_qlad to incoming dir then mv to archive
-files=($(aws s3 ls $INPUT_DIR --recursive | awk '{ print $4; }' | grep "DONE" | sort -t "/" -k 3,3))
+files=($(dfs ls $INPUT_DIR --recursive | awk '{ print $4; }' | sort -t "/" -k 3,3))
 fcount=${#files[@]}
 echo "[$(date)] : found $fcount files to check"
 
@@ -93,10 +93,8 @@ do
     if ! [[ $( grep $f $HISTORY_FILE) ]]
     then
         echo "[$(date)] : cp $f -> $OUTPUT_DIR"
-        aws s3 cp $S3_BUCKET/$f $OUTPUT_DIR/ && count=$((count+1)) && echo $f >> $HISTORY_FILE
-        if [ "$DELETE_INPUT_PCAP_FILES" = true ] ; then
-            echo "[$(date)] : rm $f"
-            aws s3 rm $S3_BUCKET/$f
+        dfs cp data/entrada/input_qlad/$f $OUTPUT_DIR/ && count=$((count+1)) && echo $f >> $HISTORY_FILE
+        mv data/entrada/input_qlad/$f data/entrada/archive
         fi
     fi
 done
