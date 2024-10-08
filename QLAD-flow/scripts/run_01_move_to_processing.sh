@@ -25,7 +25,8 @@
 
 ############################################################
 #
-# Move the received pcap files to the processing directory
+# Move the received pcap files to the processing directory 
+#(number of pcap files correspond to properly time for analyse - multiple of window_time)
 # 
 ############################################################
 
