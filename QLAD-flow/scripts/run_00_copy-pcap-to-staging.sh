@@ -25,13 +25,13 @@
 
 ############################################################
 #
-# Copy the new pcap files to the input location
+# Copy the new pcap files from hdfs to the input location
 # 
 ############################################################
 
 NAMESERVER=$1
 HISTORY_FILE="$TMP_DIR/$NAMESERVER-pcap-process.hist"
-INPUT_DIR="$S3_BUCKET/$NAMESERVER"
+INPUT_DIR="data/entrada/input_qlad/$NAMESERVER"
 OUTPUT_DIR="$DATA_DIR/incoming/$NAMESERVER"
 PID=$TMP_DIR/run_00_copy-pcap-to-staging_$NAMESERVER
 
@@ -79,6 +79,8 @@ count=0
 #loop through all pcap files
 #Some might still be written to
 #Sort oldest first
+
+###CHANGE to COPY all to local from input_qlad to incoming dir then mv to archive
 files=($(aws s3 ls $INPUT_DIR --recursive | awk '{ print $4; }' | grep "DONE" | sort -t "/" -k 3,3))
 fcount=${#files[@]}
 echo "[$(date)] : found $fcount files to check"
