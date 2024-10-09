@@ -28,25 +28,35 @@ import json
 import logging
 import sys
 import ema_filter
+import time
+import socket
+import random
+import struct
+import pickle
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import pandas as pd
 
 
 # Databases
-IMPALA_HOST='impalahost'
+IMPALA_HOST=
 IMPALA_PORT=21050
 MONGO_HOST='localhost:27017'
 MONGO_DB='QLAD'
 
+HOST_Graphite =  # Standard loopback interface address (localhost)
+PORT = 2003
+
+
+
+
 # Setup logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%d-%m-%Y %H:%M')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-
 
 def main():
     # Parse CLI options
@@ -86,61 +96,82 @@ def main():
         sys.stderr.write("Provide a timestamp for the start of the first window.\n")
         sys.exit(-1)
     if not options.window:
-        options.window = 60*5;
+        options.window = 60*5*1000;
         sys.stderr.write("Using the default window of 5m.\n")
     if not options.threshold:
         options.threshold = 3.0;
         sys.stderr.write("Using the default threshold of 3.\n")
 
+    try:
+       features = ['domainname', 'qtype', 'src', 'rcode', 'asn', 'country', 'res_len']
+       #features = ['rcode']
+       documents = []
 
-    features = ['domainname', 'qtype', 'src', 'rcode', 'asn', 'country', 'res_len']
-    #features = ['rcode']
-    documents = []
 
-    
-    begin = options.begin
-    end = begin + options.window
-    last_ts = get_last_ts(options.server, end/1000)
-    last_dt = datetime.fromtimestamp(last_ts/1000)
-    
-    while end < last_ts:
-        # Fetch data from impala
-        begin_dt = datetime.fromtimestamp(begin/1000)
-        end_dt = datetime.fromtimestamp(end/1000)
-        logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
-                     .format(options.server,begin_dt, end_dt, last_dt))
 
-        with ThreadPoolExecutor() as executor:
+       begin = options.begin
+       end = begin + options.window
+       last_ts = get_last_ts(options.server, end/1000)
+       last_dt = datetime.fromtimestamp(last_ts/1000)
+       while end < last_ts:
+           begin_dt = datetime.fromtimestamp(begin/1000)
+           end_dt = datetime.fromtimestamp(end/1000)
+           # Fetch data from impala
+           logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
+                     .format(options.server, begin_dt, end_dt, last_dt))
+
+           with ThreadPoolExecutor() as executor:
             future_to_feature = {executor.submit(process_feature, feature, begin, end, options.server, options.threshold, begin_dt, end_dt): feature for feature in features}
-            
+
             for future in as_completed(future_to_feature):
                 feature = future_to_feature[future]
                 try:
                     result = future.result()
                     # Process the result if necessary
                 except Exception as exc:
-                    print(f'{feature} generated an exception: {exc}') 
- 
-        # Go to the next window
-        begin = end
-        end = begin + options.window
-    # Store everything in the mongoDB database
-    store_in_mongoDB(documents)
-    # print(json.dumps(documents))
-    print("Start next execution with --begin {}".format(begin))
+                    print(f'{feature} generated an exception: {exc}')
 
+           # Go to the next window
+           begin = end
+           end = begin + options.window
+
+       print("Start next execution with --begin {}".format(begin))
+    except Exception:
+       logger.info("Exception raise")
+       print("Start next execution with --begin {}".format(begin))
+       logging.error(traceback.format_exc())
+        
 
 def process_feature(feature, begin, end, server, threshold, begin_dt, end_dt):
     histogram = fetch_data(feature, begin, end, server, begin_dt, end_dt)
     ent = entropy(histogram)
     anomaly = detect_anomaly(feature, ent, server, threshold)
     #store to graphite
-
+    store_qlad_global_graphite(begin,server, feature, ent,  anomaly)
 
 def fetch_data(feature, begin, end, server, begin_dt, end_dt):
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
-    sql = "SELECT {0}, count({0}) AS cnt FROM entrada.dns WHERE ((year = {1}.year AND month = {1}.month AND day = {1}.day) OR (year = {2}.year AND month = {2}.month AND day = {2}.day)) AND server = '{3}' AND time >= {4} AND time < {5} GROUP BY {0}".format(feature, begin_dt, end_dt, server, begin, end)
+    sql = """
+SELECT {0}, count({0}) AS cnt
+FROM entrada.dns
+WHERE (
+    (year = {1} AND month = {2} AND day = {3})
+    OR (year = {4} AND month = {5} AND day = {6})
+)
+AND server = '{7}'
+AND time >= {8}
+AND time < {9}
+GROUP BY {0}
+""".format(
+    feature,
+    begin_dt.year, begin_dt.month, begin_dt.day,
+    end_dt.year, end_dt.month, end_dt.day,
+    server,
+    begin,
+    end
+)
+
     logger.debug("Executing sql: " + sql)
     cur.execute(sql)
     logger.debug("Get description of results returned by impala query for feature:" + str(feature) + str(cur.description))
@@ -148,6 +179,45 @@ def fetch_data(feature, begin, end, server, begin_dt, end_dt):
     logger.debug("length of output of impala query for " + feature + ":" + str(len(output)))
     conn.close()
     return output
+
+
+
+def store_qlad_global_graphite(begin,server, feature, entropy,  anomaly):
+
+    #x: timestamp, y: entropy,
+    #histogram: full histograms, entropy -> full of this window time
+    #send entropy  with begin timestamp, tag anomalies with feature
+    #
+
+    metric_path = f"test2.global."
+    server = str(server).replace(".", "_")
+    sock = socket.socket()
+    try:
+        sock.connect((HOST_Graphite, 2003))
+        if anomaly:
+            sock.sendall((metric_path + server + "." + str(feature) + ".abnormal" + " " + str(entropy) + " " + str(int(begin)) + "\n").encode())
+            logger.debug("Sent anomalies successfully for feature: " + str(feature))
+        else:
+            sock.sendall((metric_path + server + "." + str(feature) + ".normal" + " " + str(entropy) + " " + str(int(begin)) + "\n").encode())
+
+                #server: tags
+                #anomaly tags
+
+    finally:
+        sock.close()
+
+def get_last_ts(server, end):
+    dt = datetime.fromtimestamp(end)
+    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
+    cur = conn.cursor()
+    cur.execute("SELECT MAX(time) "
+                "FROM entrada.dns "
+                "WHERE server = '{0}' and year = {1} and month = {2} and day = {3} ".format(server, dt.year, dt.month, dt.day))
+    logger.debug("Get last ts from impala with" + str(cur.description))
+    return cur.fetchall()[0][0]
+
+
+
 
 def entropy(histogram):
     """ Computes the normalized entropy of a histogram. """
@@ -167,33 +237,8 @@ def entropy(histogram):
 
 
 
-def get_last_ts(server, end):
-    dt = datetime.fromtimestamp(end)
-    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
-    cur = conn.cursor()
-    cur.execute("SELECT MAX(time) "
-                "FROM dns.staging "
-                "WHERE server = '{0}' and year = {1} and month = {2} and day = {3} ".format(server, dt.year, dt.month, dt.day))
-    logger.debug("Get last ts from impala with" + str(cur.description))
-    return cur.fetchall()[0][0]
 
 
-
-
-def fetch_data(features, begin, end, server):
-    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl = True)
-    cur = conn.cursor()
-    histograms = []
-    for feature in features:
-        sql="SELECT {0}, count({0}) AS cnt FROM dns.staging WHERE unixtime >= {1} AND unixtime < {2} AND server = '{3}' GROUP BY {0}".format(feature, begin, end, server)
-        logger.debug("Executing sql: " + sql )
-        cur.execute(sql)
-        logger.debug("Get description of results returned by impala query for feature:" + str(feature) + str(cur.description))
-        output=cur.fetchall()
-        logger.debug("length of output of impala query for " + feature + ":" + str(len(output)))
-        histograms.append(output)
-    conn.close()
-    return histograms
 
 
 def entropy(histogram):
