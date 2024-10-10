@@ -81,7 +81,8 @@ count=0
 #Sort oldest first
 
 ###CHANGE to COPY all to local from input_qlad to incoming dir then mv to archive
-files=($(dfs ls $INPUT_DIR --recursive | awk '{ print $4; }' | sort -t "/" -k 3,3))
+files=($(hdfs dfs -ls $INPUT_DIR -R | awk '{ print $8; }' | sort -t "/" -k 3,3))
+
 fcount=${#files[@]}
 echo "[$(date)] : found $fcount files to check"
 
@@ -93,9 +94,8 @@ do
     if ! [[ $( grep $f $HISTORY_FILE) ]]
     then
         echo "[$(date)] : cp $f -> $OUTPUT_DIR"
-        dfs cp data/entrada/input_qlad/$f $OUTPUT_DIR/ && count=$((count+1)) && echo $f >> $HISTORY_FILE
-        mv data/entrada/input_qlad/$f data/entrada/archive
+        hdfs dfs -cp user/entrada/input_qlad/$f $OUTPUT_DIR/ && count=$((count+1)) && echo $f >> $HISTORY_FILE
+        hdfs dfs -mv user/entrada/input_qlad/$f user/entrada/archive
         fi
     fi
 done
-echo "[$(date)] : end, copied $count files."
