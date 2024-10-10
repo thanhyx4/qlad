@@ -61,7 +61,7 @@ trap cleanup EXIT
 if ! [ -f "$HISTORY_FILE" ]
 then
   touch $HISTORY_FILE
-  date +%s > $HISTORY_FILE
+  $(($(date +%s%N)/1000000)) > $HISTORY_FILE
 fi
 
 #start analyse
