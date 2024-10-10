@@ -57,7 +57,7 @@ then
      fi
    done
 else
-   file_count = file_count -  $(( ((file_count * PCAP_TIME) % 10) / PCAP_TIME ))
+   $file_count = $file_count -  $(( ((file_count * PCAP_TIME) % 10) / PCAP_TIME ))
    for f in $INCOMING_DIR/$SERVER/*pcap*.gz
    do
      ! [ -f $f ] && continue
@@ -68,9 +68,10 @@ else
         file=$(basename $f)
         echo "[$(date)] : move $file $PROCESSING_DIR/$SERVER/$file"
         mv $f $PROCESSING_DIR/$SERVER/$(echo $file | cut -d '_' -f1).pcap.gz
+        $file_count = $file_count - 1
      fi
-     file_count = file_count - 1
-     if (file_count == 0)
+     
+     if ($file_count == 0)
      then 
         break
       fi
