@@ -57,7 +57,7 @@ then
      fi
    done
 else
-   file_count = file_count -  (( ((file_count * PCAP_TIME) % 10) / PCAP_TIME ))
+   file_count = file_count -  $(( ((file_count * PCAP_TIME) % 10) / PCAP_TIME ))
    for f in $INCOMING_DIR/$SERVER/*pcap*.gz
    do
      ! [ -f $f ] && continue
