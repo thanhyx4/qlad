@@ -66,7 +66,7 @@ fi
 
 #start analyse
 BEGIN=$(tail -n1 $HISTORY_FILE)
-python $QLADGLOBAL_HOME/main.py -s $NAMESERVER -b $BEGIN -t $THRESHOLD | tee  >(awk '/--begin /{print $NF}' > $HISTORY_FILE)
+python3 $QLADGLOBAL_HOME/main.py -s $NAMESERVER -b $BEGIN -t $THRESHOLD | tee  >(awk '/--begin /{print $NF}' > $HISTORY_FILE)
 
 
 echo "[$(date)] : done for $NAMESERVER."
