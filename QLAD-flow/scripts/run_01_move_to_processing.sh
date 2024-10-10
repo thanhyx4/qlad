@@ -42,7 +42,7 @@ if [ ! -d "$PROCESSING_DIR/$SERVER" ]; then
 fi
 
 file_count=$(find "$INCOMING_DIR/$SERVER" -type f -name "*.pcap.gz" | wc -l)
-if ((file_count * PCAP_TIME) % 10 == 0)
+if (((file_count * PCAP_TIME) % 10) == 0)
 then
    for f in $INCOMING_DIR/$SERVER/*pcap*.gz
    do
