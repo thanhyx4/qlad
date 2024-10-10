@@ -112,7 +112,7 @@ def main():
        begin = options.begin
        end = begin + options.window
        last_ts = get_last_ts(options.server, end/1000)
-       last_dt = datetime.fromtimestamp(last_ts/1000)
+       last_dt = datetime.fromtimestamp(last_ts)
        while end < last_ts:
            begin_dt = datetime.fromtimestamp(begin/1000)
            end_dt = datetime.fromtimestamp(end/1000)
@@ -207,7 +207,7 @@ def store_qlad_global_graphite(begin,server, feature, entropy,  anomaly):
         sock.close()
 
 def get_last_ts(server, end):
-    dt = datetime.fromtimestamp(end)
+    dt = datetime.fromtimestamp(end/1000)
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
     cur.execute("SELECT MAX(time) "
