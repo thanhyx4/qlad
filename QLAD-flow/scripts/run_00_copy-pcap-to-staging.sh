@@ -81,7 +81,7 @@ count=0
 #Sort oldest first
 
 ###CHANGE to COPY all to local from input_qlad to incoming dir then mv to archive
-files=($(hdfs dfs -ls $INPUT_DIR -R | awk '{ print $8; }' | sort -t "/" -k 3,3))
+files=($(hdfs dfs -ls -R $INPUT_DIR | awk '{ print $8; }' | sort -t "/" -k 3,3))
 
 fcount=${#files[@]}
 echo "[$(date)] : found $fcount files to check"
