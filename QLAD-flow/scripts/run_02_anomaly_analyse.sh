@@ -76,12 +76,12 @@ echo "[$(date)] : found $fcount files to check"
 
 echo "[$(date)] :Start anomaly detection for $NAMESERVER with srcIP policy"
 COMMAND="dnsanalyzer -w ${WINDOW} -i ${INTERVAL} -a ${AGGREG} -p ${GAMMAPAR} -t ${THRESH} -P srcIP -c ${HASHCNT} -s ${SKETCHCNT} -q"
-pcapmerge - "${files[@]}" 2> /dev/null | $COMMAND | python $QLADFLOW_HOME/scripts/send_anomalies.py -t "Resolver" -s $NAMESERVER -m $TMP_DIR/maxmind
+pcapmerge - "${files[@]}" 2> /dev/null | $COMMAND | python3 $QLADFLOW_HOME/scripts/send_anomalies.py -t "Resolver" -s $NAMESERVER -m $TMP_DIR/maxmind
 
 
 echo "[$(date)] :Start anomaly detection for $NAMESERVER with qname policy"
 COMMAND="dnsanalyzer -w ${WINDOW} -i ${INTERVAL} -a ${AGGREG} -p ${GAMMAPAR} -t ${THRESH} -P qname -c ${HASHCNT} -s ${SKETCHCNT} -q"
-pcapmerge - "${files[@]}" 2> /dev/null | $COMMAND | python $QLADFLOW_HOME/scripts/send_anomalies.py -t "Domain" -s $NAMESERVER -m $TMP_DIR/maxmind
+pcapmerge - "${files[@]}" 2> /dev/null | $COMMAND | python3 $QLADFLOW_HOME/scripts/send_anomalies.py -t "Domain" -s $NAMESERVER -m $TMP_DIR/maxmind
 
 
 #delete processed files
