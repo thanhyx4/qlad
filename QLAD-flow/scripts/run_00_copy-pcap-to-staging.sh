@@ -94,8 +94,8 @@ do
     if ! [[ $( grep $f $HISTORY_FILE) ]]
     then
         echo "[$(date)] : cp $f -> $OUTPUT_DIR"
-        hdfs dfs -cp user/entrada/input_qlad/$f $OUTPUT_DIR/ && count=$((count+1)) && echo $f >> $HISTORY_FILE
-        hdfs dfs -mv user/entrada/input_qlad/$f user/entrada/archive
+        hdfs dfs -cp $INPUT_DIR/$f $OUTPUT_DIR/ && count=$((count+1)) && echo $f >> $HISTORY_FILE
+        hdfs dfs -mv $INPUT_DIR/$f user/entrada/archive
         fi
     fi
 done
