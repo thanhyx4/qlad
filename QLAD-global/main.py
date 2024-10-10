@@ -274,44 +274,6 @@ def histogram_to_document(histogram, nb_keep=20):
     return [{'key': bin[0], 'value': bin[1]} for bin in sorted_histogram[:nb_keep]]
 
 
-def to_document(start, end, server, features, histograms, anomalies):
-    document = {}
-    document['start'] = start
-    document['end'] = end
-    document['server'] = server
-    #logger.debug("To document for  features:" + str(features) + " histograms:" + str(histograms) )
-    #logger.debug("ZIP" + str(zip(features, histograms)) )
-    #CONTENT OF features en histograms
-    #Histogram is list of histograms. histogram[0] is histogram for first feature in list "features", histogram[1} is histogram for second feature in list "features" and so on
-    #(zip(features, histograms))
-    #RESULT FROM ZIP  ZIP[('rcode', [(3, 26204), (5, 19), (4, 2), (9, 1), (-1, 26), (0, 50514), (1, 1)]),(qtype,[('......]
-    logger.debug("Length of array of array of histograms is " +  str(len(histograms)))
-    for feature, histogram in zip(features, histograms):
-    #logger.debug("To document for  feature:" + str(feature) + " histogram:" + str(histogram) )
-    logger.debug("histogram of feature " +  str(feature) + " contains " + str(len(histogram))  + " (value of " + str(feature) + ":count of " + str(feature) + ") tuple pairs")
-    #Quick & dirty workaround for now, sometimes we get an empty histogram probably due to timestamp where we want to query is in the future sometimes?
-    #This is crashing this script so prevent crashing
-    if str(len(histogram)) == "0":
-      logger.debug("Length of histogram is 0, activating quick workaround of setting max min and avg to 0 for this window")
-      document[feature] = {
-        'histogram': histogram_to_document(histogram),
-        'entropy': entropy(histogram),
-        'max': 0,
-        'min': 0,
-        'avg': 0
-      }
-  else:
-      document[feature] = {
-        'histogram': histogram_to_document(histogram),
-        'entropy': entropy(histogram),
-        'max': max([bin[1] for bin in histogram]),
-        'min': min([bin[1] for bin in histogram]),
-        'avg': sum([bin[1] for bin in histogram])/len(histogram)
-      }
-    document['nb_queries'] = sum([bin[1] for bin in histograms[0]])
-    document['anomalies'] = anomalies
-    return document
-
 
 def store_in_mongoDB(documents):
     if len(documents):
