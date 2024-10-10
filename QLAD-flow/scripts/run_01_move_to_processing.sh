@@ -68,7 +68,7 @@ else
         file=$(basename $f)
         echo "[$(date)] : move $file $PROCESSING_DIR/$SERVER/$file"
         mv $f $PROCESSING_DIR/$SERVER/$(echo $file | cut -d '_' -f1).pcap.gz
-        file_count = $((file_count - 1))
+        file_count=$((file_count - 1))
      fi
      
      if ((file_count == 0))
