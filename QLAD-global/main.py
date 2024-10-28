@@ -142,12 +142,12 @@ def main():
        logging.error(traceback.format_exc())
         
 
-def process_feature(feature, begin, end, server, threshold, begin_dt, end_dt):
-    histogram = fetch_data(feature, begin, end, server, begin_dt, end_dt)
+def process_feature(feature, begin, end, server, threshold, begin_dt, end_dt):        #begin, end: s
+    histogram = fetch_data(feature, begin, end, server, begin_dt, end_dt)        #fetch using ms but this time: begin_dt, end_dt
     ent = entropy(histogram)
     anomaly = detect_anomaly(feature, ent, server, threshold)
     #store to graphite
-    store_qlad_global_graphite(begin,server, feature, ent,  anomaly)
+    store_qlad_global_graphite(begin,server, feature, ent,  anomaly)            #unit of time: s
 
 def fetch_data(feature, begin, end, server, begin_dt, end_dt):
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
