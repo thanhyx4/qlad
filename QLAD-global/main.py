@@ -111,7 +111,7 @@ def main():
 
        begin = options.begin
        end = begin + options.window
-       last_ts = get_last_ts(options.server, end/1000)
+       last_ts = get_last_ts(options.server, end/1000)        #du lieu hom sau chua co se tra ve nonetype
        last_dt = datetime.fromtimestamp(last_ts/1000)
        while end < last_ts:
            begin_dt = datetime.fromtimestamp(begin/1000)
