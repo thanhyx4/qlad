@@ -170,7 +170,7 @@ GROUP BY {0}
     server,
     begin,
     end
-)
+)            #dữ liệu tìm kiếm theo epoch time, nếu các partition của hdfs lưu theo local time thì phải chỉnh sửa lại
 
     logger.debug("Executing sql: " + sql)
     cur.execute(sql)
