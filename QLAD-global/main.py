@@ -115,7 +115,7 @@ def main():
        last_dt = datetime.fromtimestamp(last_ts/1000)
        while end < last_ts:
            begin_dt = datetime.fromtimestamp(begin/1000)
-           end_dt = datetime.fromtimestamp(end/1000)
+           end_dt = datetime.fromtimestamp(end/1000)            #local time of partition hdfs
            # Fetch data from impala
            logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
                      .format(options.server, begin_dt, end_dt, last_dt))
@@ -206,8 +206,8 @@ def store_qlad_global_graphite(begin,server, feature, entropy,  anomaly):
     finally:
         sock.close()
 
-def get_last_ts(server, end):
-    dt = datetime.fromtimestamp(end)
+def get_last_ts(server, end_dt):
+    dt = datetime.fromtimestamp(end_dt)
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
     cur.execute("SELECT MAX(time) "
