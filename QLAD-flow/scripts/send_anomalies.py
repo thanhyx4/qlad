@@ -14,7 +14,7 @@ from anomaly_parser import AnomalyParser, ParserError
 import socket
 import random
 import time
-import datetime
+import datetime, timezone
 import struct
 import pickle
 import logging
@@ -153,8 +153,8 @@ def parse_anomalies(anomalies_file, anomalies_type, server, maxmind):
     return formatted_anomalies
 
 def store_total_qlad_flow_graphite(begin, end, server):
-    begin_dt=datetime.datetime.fromtimestamp(begin)
-    end_dt = datetime.datetime.fromtimestamp(end)        #remember to add local time of partition hdfs
+    begin_dt=datetime.datetime.fromtimestamp(begin, tz = timezone.utc)
+    end_dt = datetime.datetime.fromtimestamp(end, tz = timezone.utc)        #remember to add local time of partition hdfs
     total_sql = """
 SELECT FLOOR(time/1000) AS time_seconds, COUNT(*)
 FROM entrada.dns 
@@ -212,8 +212,8 @@ ORDER BY time_seconds
 
 def store_anomalies_qlad_flow_graphite(begin, end, subject, type_, server):
    #begin, end: seconds
-    begin_dt=datetime.datetime.fromtimestamp(begin)
-    end_dt = datetime.datetime.fromtimestamp(end)        #remember to add local time of partition hdfs
+    begin_dt=datetime.datetime.fromtimestamp(begin, tz = timezone.utc)
+    end_dt = datetime.datetime.fromtimestamp(end, tz = timezone.utc)        #remember to add local time of partition hdfs
 
     if type_ == 'Resolver':
         anomaly_sql = """
