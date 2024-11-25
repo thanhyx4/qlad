@@ -23,7 +23,7 @@ from impala.dbapi import connect
 from math import log10
 from optparse import OptionParser
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import sys
@@ -112,10 +112,10 @@ def main():
        begin = options.begin
        end = begin + options.window
        last_ts = get_last_ts(options.server, end/1000)        #du lieu hom sau chua co se tra ve nonetype
-       last_dt = datetime.fromtimestamp(last_ts/1000)
+       last_dt = datetime.fromtimestamp(last_ts/1000, tz = timezone.utc)
        while end < last_ts:
-           begin_dt = datetime.fromtimestamp(begin/1000)
-           end_dt = datetime.fromtimestamp(end/1000)            #local time of partition hdfs
+           begin_dt = datetime.fromtimestamp(begin/1000, , tz = timezone.utc)
+           end_dt = datetime.fromtimestamp(end/1000, , tz = timezone.utc)            #local time of partition hdfs
            # Fetch data from impala
            logger.info("Fetching data for {} between {} and {}. Last TS in impala is {}"
                      .format(options.server, begin_dt, end_dt, last_dt))
@@ -207,7 +207,7 @@ def store_qlad_global_graphite(begin,server, feature, entropy,  anomaly):
         sock.close()
 
 def get_last_ts(server, end_dt):
-    dt = datetime.fromtimestamp(end_dt)
+    dt = datetime.fromtimestamp(end_dt, , tz = timezone.utc)
     conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
     cur = conn.cursor()
     cur.execute("SELECT MAX(time) "
