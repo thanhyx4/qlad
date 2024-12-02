@@ -129,7 +129,7 @@ def main():
                     result = future.result()
                     # Process the result if necessary
                 except Exception as exc:
-                    print(f'{feature} generated an exception: {exc}')
+                    logger.info("f'{feature} generated an exception:")
 
            # Go to the next window
            begin = end
