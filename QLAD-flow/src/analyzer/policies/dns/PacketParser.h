@@ -118,7 +118,7 @@ public:
 	  std::string hostName = mName;
 	
 	  // Split into components
-	  size_t pos = hostName.rfind('.');
+	  int pos = hostName.rfind('.');
 	  if (pos == std::string::npos) {
 	    return hostName; // No dots, return full name
 	  }
