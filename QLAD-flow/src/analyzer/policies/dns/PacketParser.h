@@ -79,7 +79,7 @@ public:
 			mName.clear();
 		}
 
-		return getDomain(mName);
+		return getSLD(mName);
 	}
 
 	enum {
@@ -110,39 +110,18 @@ public:
       serverDomainStr = hostName.substr(0);
     }
 
-    hostName = hostName.substr(ppcpos+1);
+    int pppcpos = serverDomainStr.rfind(".");
+    if(pppcpos != std::string::npos) {
+      serverDomainStr = hostName.substr(0, pppcpos);
+    } else {
+      serverDomainStr = hostName.substr(0);
+    }
+
+    hostName = hostName.substr(pppcpos+1);
     return hostName;
   }
 
-  ::std::string getDomain(const std::string& mName) {
-	  std::string hostName = mName;
-	
-	  // Split into components
-	  int pos = hostName.rfind('.');
-	  if (pos == std::string::npos) {
-	    return hostName; // No dots, return full name
-	  }
-	
-	  std::string tld = hostName.substr(pos + 1);
-	  hostName = hostName.substr(0, pos);
-	
-	  pos = hostName.rfind('.');
-	  if (pos == std::string::npos) {
-	    return hostName + "." + tld; // Only two levels, return sld.tld
-	  }
-	
-	  std::string sld = hostName.substr(pos + 1);
-	  hostName = hostName.substr(0, pos);
-	
-	  // If there's a third level, return sld.tld
-	  if (!hostName.empty()) {
-	    return sld + "." + tld; 
-	  }
-	
-	  // Otherwise, return full name
-	  return hostName + "." + sld + "." + tld;
-}
-
+  
 private:
 	const unsigned char *mSnapend; /*!< @brief Ptr to end of packet. */
 	::std::string mName;          /*!< @brief Buffer for query name. */
