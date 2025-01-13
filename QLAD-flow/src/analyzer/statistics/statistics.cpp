@@ -75,7 +75,7 @@ long double Statistics::getMahalanobisDistance(
 		 * |v|       -- vector or matrix
 		 * |v| ** -1 -- inverse matrix
 		 */
-		if (parameters[i] <= referenceMean[i]){
+		if (parameters[i].shape() <= referenceMean[i].shape()){
 			break;
 		}
 		long double dist;
