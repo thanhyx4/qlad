@@ -75,9 +75,7 @@ long double Statistics::getMahalanobisDistance(
 		 * |v|       -- vector or matrix
 		 * |v| ** -1 -- inverse matrix
 		 */
-		if (parameters[i].shape() <= referenceMean[i].shape()){
-			break;
-		}
+		
 		long double dist;
 		if ( analysed_parameter == GammaParameters::gammaShape ) {
 			/*
@@ -104,6 +102,19 @@ long double Statistics::getMahalanobisDistance(
 				dist /= referenceVariance[i].scale();
 			}
 		} else /* both parameters analysed together */ {
+			long double expectation_params = parameters[i].shape() * parameters[i].scale();
+			long double expectation_ref = referenceMean[i].shape() * referenceMean[i].scale();
+			
+			if (expectation_params < expectation_ref) {
+			    long double variance_params = parameters[i].shape() * pow(parameters[i].scale(), 2);
+			    long double variance_ref = referenceMean[i].shape() * pow(referenceMean[i].scale(), 2);
+			
+			    if (variance_params < variance_ref) {
+			        // Skip the computation if both conditions are true
+			        break;
+			    }
+			}
+
 			/* building covariance matrix */
 			long double c00, c01, /* var(sh),     cov(sh, sc) */
 			            c10, c11; /* cov(cs, sh), var(sc)     */
