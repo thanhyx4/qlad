@@ -100,7 +100,7 @@ public:
     if(pcpos != std::string::npos) {
       serverDomainStr = hostName.substr(0, pcpos);
     } else {
-      serverDomainStr = hostName.substr(0);
+      return mName;
     }
 
     int ppcpos = serverDomainStr.rfind(".");
@@ -110,17 +110,11 @@ public:
       serverDomainStr = hostName.substr(0);
     }
 
-    int pppcpos = serverDomainStr.rfind(".");
-    if(pppcpos != std::string::npos) {
-      serverDomainStr = hostName.substr(0, pppcpos);
-    } else {
-      serverDomainStr = hostName.substr(0);
-    }
+    
 
-    hostName = hostName.substr(pppcpos+1);
+    hostName = hostName.substr(ppcpos+1);
     return hostName;
   }
-
   
 private:
 	const unsigned char *mSnapend; /*!< @brief Ptr to end of packet. */
