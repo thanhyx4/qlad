@@ -86,14 +86,14 @@ public:
 		MAXDNAME = 256 /*!< @brief Max name length (RFC 883) */
 	};
 
-  ::std::string getSLD(::std::string mName) {	#"langla.vn."
+  ::std::string getSLD(::std::string mName) {	//"langla.vn."
     std::string hostName = mName;
     std::string serverDomainStr;
     int cpos = hostName.rfind(".");
     if(cpos != std::string::npos) {
       serverDomainStr = hostName.substr(0, cpos);
     } else {
-      serverDomainStr = hostName.substr(0);
+      return mName;
     }
 
     int pcpos = serverDomainStr.rfind(".");
@@ -107,7 +107,7 @@ public:
     if(ppcpos != std::string::npos) {
       serverDomainStr = hostName.substr(0, ppcpos);
     } else {
-      serverDomainStr = hostName.substr(0);
+      return mName;
     }
     int pppcpos = serverDomainStr.rfind(".");
     if(pppcpos != std::string::npos) {
