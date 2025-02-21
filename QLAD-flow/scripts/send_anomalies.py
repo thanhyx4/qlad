@@ -19,7 +19,8 @@ import struct
 import pickle
 import logging
 from impala.dbapi import connect
-
+import influxdb_client
+from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
 
 
 # Setup logging
@@ -37,7 +38,13 @@ IMPALA_HOST =
 IMPALA_PORT = 21050
 
 
-
+bucket = "test2"
+org = "private"
+token = ""
+# Store the URL of your InfluxDB instance
+INFLUXDB_HOST="localhost"
+INFLUXDB_PORT="8086"
+url="http://" + INFLUXDB_HOST + ":" + INFLUXDB_PORT 
 
 
 
@@ -111,9 +118,8 @@ def parse_anomalies_send_to_graphite(anomalies_file, anomalies_type, server):
             sys.exit(-1)
         if not parsed_anomalies:
             break
-        store_total_qlad_flow_graphite(parsed_anomalies.from_time, parsed_anomalies.to_time, server)
         for ip in parsed_anomalies.anomalies:
-            store_anomalies_qlad_flow_graphite(parsed_anomalies.from_time, parsed_anomalies.to_time, ip,  anomalies_type, server)
+            store_anomalies_qlad_flow_influxDB(parsed_anomalies.from_time, parsed_anomalies.to_time, ip,  anomalies_type, server)
 
     if anomalies_file is not sys.stdin:
         ap.close_file()
@@ -151,6 +157,85 @@ def parse_anomalies(anomalies_file, anomalies_type, server, maxmind):
         ap.close_file()
 
     return formatted_anomalies
+
+
+def store_anomalies_qlad_flow_influxDB(begin, end, subject, type_, server):
+   #begin, end: seconds
+    begin_dt=datetime.datetime.fromtimestamp(begin, tz = timezone.utc)
+    end_dt = datetime.datetime.fromtimestamp(end, tz = timezone.utc)        #remember to add local time of partition hdfs
+
+    if type_ == 'Resolver':
+        anomaly_sql = """
+SELECT FLOOR(time/1000) AS time_seconds, COUNT(*),
+COUNT(CASE WHEN src = '{7}'  THEN 1 END)
+FROM entrada.dns 
+WHERE server = '{0}' 
+AND (
+    (year = {1} AND month = {2} AND day = {3})
+    OR (year = {4} AND month = {5} AND day = {6})
+) 
+AND time >= {8} 
+AND time < {9} 
+GROUP BY FLOOR(time/1000) 
+ORDER BY time_seconds
+""".format(
+    server, 
+    begin_dt.year, begin_dt.month, begin_dt.day,
+    end_dt.year, end_dt.month, end_dt.day,
+    subject, 
+    begin * 1000, 
+    end * 1000
+)
+
+    else:
+        subject1 = "%" + str(subject)
+        anomaly_sql = """
+SELECT FLOOR(time/1000) AS time_seconds, COUNT(*),
+COUNT(CASE WHEN qname LIKE '{7}' THEN 1 END)
+FROM entrada.dns 
+WHERE server = '{0}' 
+AND (
+    (year = {1} AND month = {2} AND day = {3})
+    OR (year = {4} AND month = {5} AND day = {6})
+)
+AND time >= {8} 
+AND time < {9} 
+GROUP BY FLOOR(time/1000) 
+ORDER BY time_seconds
+""".format(
+    server, 
+    begin_dt.year, begin_dt.month, begin_dt.day,
+    end_dt.year, end_dt.month, end_dt.day,
+    subject1, 
+    begin * 1000, 
+    end * 1000
+)
+
+
+    conn = connect(host=IMPALA_HOST, port=IMPALA_PORT, use_ssl=True)
+    cur = conn.cursor()
+    logger.debug("Executing sql:" + anomaly_sql)
+    cur.execute(anomaly_sql)
+    stat_abnormal = cur.fetchall()
+    logger.debug("Get des of results returned by impala query" + str(cur.description))
+    conn.close()
+
+    
+    lines = [f"qlad_flow1,server={server},type_identifier={type_},identifier={subject} anomaly={value2},all={value1} {int(timestamp)}" for timestamp, value1, value2  in stat_abnormal] 
+    try:
+        with InfluxDBClient(url=url, token=token, org=org) as _client:
+            with _client.write_api(write_options=WriteOptions(batch_size=5000,
+                                                      flush_interval=10000,
+                                                      jitter_interval=2000,
+                                                      retry_interval=5000,
+                                                      max_retries=5,
+                                                      max_retry_delay=30000,
+                                                      max_close_wait=300000,
+                                                      exponential_base=2)) as _write_client:
+                _write_client.write(bucket, org, record = lines, write_precision=WritePrecision.S)
+    finally:
+        _client.close()
+
 
 def store_total_qlad_flow_graphite(begin, end, server):
     begin_dt=datetime.datetime.fromtimestamp(begin, tz = timezone.utc)
